@@ -1,17 +1,26 @@
 
 package com.example.whatstheweather;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -33,22 +42,51 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void getWeather(View view) {
-        if (editText.getText().toString().equals("")) {
-            Toast.makeText(getApplicationContext(), "Could not find weather!", Toast.LENGTH_SHORT).show();
+
+        if (!isInternetConnected(this)) {
+            showCustomDialog();
         } else {
-            try {
-                DownloadTask task = new DownloadTask();
-                String encodedCityName = URLEncoder.encode(editText.getText().toString(), "UTF-8");
-                task.execute("https://api.openweathermap.org/data/2.5/weather?q=" + encodedCityName + "&appid=174483a67626d4899af647aabb873ff6");
-                //for disable keyboard
-                InputMethodManager manager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                manager.hideSoftInputFromWindow(editText.getWindowToken(), 0);
-            } catch (Exception e) {
-                e.printStackTrace();
-                resultTextView.setText(R.string.valid_name);
+            if (editText.getText().toString().equals("")) {
+                Toast.makeText(getApplicationContext(), "Could not find weather!", Toast.LENGTH_SHORT).show();
+            } else {
+                try {
+                    DownloadTask task = new DownloadTask();
+                    String encodedCityName = URLEncoder.encode(editText.getText().toString(), "UTF-8");
+                    task.execute("https://api.openweathermap.org/data/2.5/weather?q=" + encodedCityName + "&appid=174483a67626d4899af647aabb873ff6");
+                    //for disable keyboard
+                    InputMethodManager manager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    manager.hideSoftInputFromWindow(editText.getWindowToken(), 0);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    resultTextView.setText(R.string.valid_name);
+                }
             }
         }
+    }
 
+    private void showCustomDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Please check your internet connection")
+                .setCancelable(false)
+                .setPositiveButton("Connect", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+                    }
+                }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                finish();
+            }
+        });
+        builder.show();
+    }
+
+    private boolean isInternetConnected(MainActivity mainActivity) {
+        ConnectivityManager connectivityManager = (ConnectivityManager) mainActivity.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo wifiConn = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+        NetworkInfo mobileConn = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+        return (wifiConn != null && wifiConn.isConnected()) || (mobileConn != null && mobileConn.isConnected());
     }
 
     public class DownloadTask extends AsyncTask<String, Void, String> {
